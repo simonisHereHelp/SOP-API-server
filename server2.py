@@ -23,6 +23,7 @@ from utils.edges import EdgeGraph
 from langgraph.graph import END, StateGraph
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware
 from langserve import add_routes
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_core.messages import HumanMessage, AIMessage
@@ -142,6 +143,17 @@ app = FastAPI(
     
 )
 
+# Fetch allowed origins from environment variables
+origins = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 @app.get("/")
 async def redirect_root_to_docs():
     return RedirectResponse("/docs")
@@ -164,5 +176,7 @@ add_routes(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="localhost", port=8000)
+    # Use the PORT environment variable if available, otherwise default to 8000
+    port = int(os.getenv("PORT", 8000))
 
+    uvicorn.run(app, host="0.0.0.0", port=port)

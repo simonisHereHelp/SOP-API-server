@@ -8,7 +8,7 @@ input_text = st.text_input('ask SOP related question here')
 if input_text:
     with st.spinner("Processing..."):
         try:
-            app = RemoteRunnable("http://localhost:8000/speckle_chat/")
+            app = RemoteRunnable("https://sop-api-server.onrender.com/speckle_chat/")
             for output in app.stream({"input": input_text}):
                 for key, value in output.items():
                     # Node
