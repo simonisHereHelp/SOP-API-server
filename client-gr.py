@@ -3,7 +3,7 @@ from langserve import RemoteRunnable
 from pprint import pprint
 
 def get_response(input_text):
-    app = RemoteRunnable("https://sop-api-server.onrender.com/speckle_chat/")
+    app = RemoteRunnable("http://localhost:8000/speckle_chat/")
     for output in app.stream({"input": input_text}):
         for key, value in output.items():
             # Node
@@ -19,10 +19,10 @@ iface = gr.Interface(fn=get_response,
           inputs=gr.Textbox(
           value="Enter your question"), 
           outputs="textbox",  
-          title="Q&A over Speckle's developer docs",
-          description="Ask a question about Speckle's developer docs and get an answer from the code assistant. This assistant looks up relevant documents and answers your code-related question.",
-          examples=[["How do I install Speckle's python sdk?"], 
-                  ["How to commit and retrieve an object from Speckle?"],
+          title="Q&A over SOP docs",
+          description="Ask a question about SOP docs and get an answer from the AI assistant. This assistant looks up relevant documents and answers your code-related question.",
+          examples=[["How to fill out Form 3602A?"], 
+                  ["Give out cases for VR-based surgical procedures."],["Elaborate cases or indications for VR-based rehabiliations."]
                   ],
           theme=gr.themes.Soft(),
           allow_flagging="never",)

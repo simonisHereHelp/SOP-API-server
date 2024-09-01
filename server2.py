@@ -9,9 +9,11 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(current_dir))
 
 # Add the utils package to the Python path
-utils_dir = os.path.join(os.path.dirname(current_dir), 'utils')
+utils_dir = os.path.join(current_dir, 'utils')
 sys.path.append(utils_dir)
+data_directory = os.path.join(current_dir, 'sop')
 
+from langchain_community.document_loaders import PyPDFLoader
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from typing import List, Any, Union, Dict
 from utils.vector_store import create_vector_store
@@ -55,12 +57,22 @@ os.environ['LANGCHAIN_API_KEY'] = os.getenv('LANGCHAIN_API_KEY')
 # embedding model
 embedding_model = OpenAIEmbeddings()
 
-# Load the crawled saved docs from the local file
-with open("crawled_docs/saved_docs.pkl", "rb") as f:
-    saved_docs = pickle.load(f)
+def load_pdfs_from_directory(directory_path):
+    all_documents = []
+    for filename in os.listdir(directory_path):
+        if filename.endswith('.pdf'):
+            file_path = os.path.join(directory_path, filename)
+            loader = PyPDFLoader(file_path)
+            documents = loader.load()
+            all_documents.extend(documents)
+    return all_documents
 
-# convert doc list to text strings
-# doc_text = [doc.page_content for doc in saved_docs]
+# Directory containing the PDF file
+
+
+
+# Load all PDFs from the directory
+saved_docs = load_pdfs_from_directory(data_directory)
 
 # create vector store
 store = create_vector_store(saved_docs)
