@@ -3,7 +3,7 @@ from langserve import RemoteRunnable
 from pprint import pprint
 
 def get_response(input_text):
-    app = RemoteRunnable("http://localhost:8000/speckle_chat/")
+    app = RemoteRunnable("https://sop-api-server.onrender.com/speckle_chat/")
     for output in app.stream({"input": input_text}):
         for key, value in output.items():
             # Node
