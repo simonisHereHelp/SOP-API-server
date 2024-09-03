@@ -1,7 +1,7 @@
 import os
 import pickle
 import sys
-
+import logging
 # Get the current working directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -193,6 +193,16 @@ async def handle_speckle_chat(
 ):
     # Handle file processing if a file is uploaded
     file_content = await file.read() if file else None
+    
+    logging.info(f"Input text: {input}")
+
+    # Handle file processing if a file is uploaded
+    file_content = await file.read() if file else None
+    file_bytes = len(file_content) if file_content else 0
+
+        # Log the file details
+    logging.info(f"File name: {file_name}")
+    logging.info(f"File size (bytes): {file_bytes}")
     
     if file_content and file_name:
         # Save the file to the specified directory
