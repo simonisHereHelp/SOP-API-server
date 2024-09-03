@@ -23,9 +23,9 @@ from langchain_core.runnables import RunnableLambda
 from langserve import CustomUserType, add_routes
 
 app = FastAPI(
-    title="LangChain Server",
+    title="SOP Server",
     version="1.0",
-    description="Spin up a simple api server using Langchain's Runnable interfaces",
+    description="SOP API Server (FastAPI query)",
 )
 
 
@@ -36,16 +36,30 @@ class FileProcessingRequest(CustomUserType):
 
     # The extra field is used to specify a widget for the playground UI.
     file: str = Field(..., extra={"widget": {"type": "base64file"}})
-    num_chars: int = 100
+    num_chars: int = 700
+    question: str = ""  # Added field to handle user question
 
 
 def _process_file(request: FileProcessingRequest) -> str:
-    """Extract the text from the first page of the PDF."""
-    content = base64.b64decode(request.file.encode("utf-8"))
-    blob = Blob(data=content)
-    documents = list(PDFMinerParser().lazy_parse(blob))
-    content = documents[0].page_content
-    return content[: request.num_chars]
+
+    if request.file:  # Check if file data is not empty
+        """Extract the text from the first page of the PDF."""
+        content = base64.b64decode(request.file.encode("utf-8"))
+        blob = Blob(data=content)
+        documents = list(PDFMinerParser().lazy_parse(blob))
+        extracted_text = documents[0].page_content[: request.num_chars]
+    else:
+        extracted_text = "No PDF file uploaded. No extracted text is available."
+    
+    if request.question:
+        # Here you could integrate a simple question-answering logic
+        # For example, returning the first occurrence of a keyword from the question
+        if request.question.lower() in extracted_text.lower():
+            return f"Found your query in the text: '{request.question}'\n\nExtracted text: {extracted_text}"
+        else:
+            return f"Query '{request.question}' not found in the extracted text.\n\nExtracted text: {extracted_text}"
+    else:
+        return extracted_text
 
 
 add_routes(

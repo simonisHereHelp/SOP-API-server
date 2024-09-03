@@ -1,7 +1,7 @@
 import os
 import pickle
 import sys
-import logging
+
 # Get the current working directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -11,7 +11,8 @@ sys.path.append(os.path.dirname(current_dir))
 # Add the utils package to the Python path
 utils_dir = os.path.join(current_dir, 'utils')
 sys.path.append(utils_dir)
-data_directory = os.path.join(current_dir, 'sop')
+answers_list_directory = os.path.join(current_dir, 'answers_list')
+question_directory = os.path.join(current_dir, 'question')
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
@@ -20,10 +21,10 @@ from utils.vector_store import create_vector_store
 from utils.grader import GraderUtils
 from utils.graph import GraphState
 from utils.generate_chain import create_generate_chain
-from utils.nodes import GraphNodes
+from utils.nodes_dual_retrieve import GraphNodes
 from utils.edges import EdgeGraph
 from langgraph.graph import END, StateGraph
-from fastapi import FastAPI, File, UploadFile, Form
+from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from langserve import add_routes
@@ -32,7 +33,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.output_parsers import StrOutputParser
 from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv()) # important line if cannot load api key
-from typing import Optional
+
 ## Getting the api keys from the .env file
 
 os.environ['OPENAI_API_KEY'] = os.getenv('OPENAI_API_KEY')
@@ -72,14 +73,14 @@ def load_pdfs_from_directory(directory_path):
 
 
 # Load all PDFs from the directory
-saved_docs = load_pdfs_from_directory(data_directory)
-
+answers_list_docs = load_pdfs_from_directory(answers_list_directory)
+question_docs = load_pdfs_from_directory(question_directory)
 # create vector store
-store = create_vector_store(saved_docs)
-
+answers_list_store = create_vector_store(answers_list_docs)
+question_store = create_vector_store(question_docs)
 # creating retriever
-retriever = store.as_retriever()
-
+answers_list_retriever = answers_list_store.as_retriever()
+question_retriever = question_store.as_retriever()
 ## LLM model
 llm = ChatOpenAI(model="gpt-4o", temperature=0)
 
@@ -110,7 +111,7 @@ question_rewriter = grader.create_question_rewriter()
 workflow = StateGraph(GraphState)
 
 # Create an instance of the GraphNodes class
-graph_nodes = GraphNodes(llm, retriever, retrieval_grader, hallucination_grader, code_evaluator, question_rewriter)
+graph_nodes = GraphNodes(llm, answers_list_retriever, question_retriever, retrieval_grader, hallucination_grader, code_evaluator, question_rewriter)
 
 # Create an instance of the EdgeGraph class
 edge_graph = EdgeGraph(hallucination_grader, code_evaluator)
@@ -166,66 +167,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Define the directory to save uploaded files
-UPLOAD_DIRECTORY = "sop_temp"
-
-# Ensure the directory exists
-os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
-
 @app.get("/")
 async def redirect_root_to_docs():
     return RedirectResponse("/docs")
 
 class Input(BaseModel):
     input: str
-    file_name: Optional[str] = None
-    file_content: Optional[bytes] = None
 
 
 class Output(BaseModel):
     output: dict
     
-@app.post("/speckle_chat/")
-async def handle_speckle_chat(
-    input: str = Form(...),
-    file_name: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None)
-):
-    # Handle file processing if a file is uploaded
-    file_content = await file.read() if file else None
-    
-    logging.info(f"Input text: {input}")
 
-    # Handle file processing if a file is uploaded
-    file_content = await file.read() if file else None
-    file_bytes = len(file_content) if file_content else 0
-
-        # Log the file details
-    logging.info(f"File name: {file_name}")
-    logging.info(f"File size (bytes): {file_bytes}")
-    
-    if file_content and file_name:
-        # Save the file to the specified directory
-        file_location = os.path.join(UPLOAD_DIRECTORY, file_name)
-        with open(file_location, "wb") as f:
-            f.write(file_content)
-
-    # Construct the input data with file details
-    input_data = Input(
-        input=input,
-        file_name=file_name,
-        file_content=file_content
-    )
-    
-    # Execute the chain with input data, automatically generating the response
-    typed_chain = chain.with_types(input_type=Input, output_type=Output)
-    response = typed_chain(input_data)
-
-    # Return the output directly (handled by the chain)
-    return response
-
-# Add routes for the chain
-add_routes(app, chain.with_types(input_type=Input, output_type=Output), path="/speckle_chat")
+# add routes
+add_routes(
+   app,
+   chain.with_types(input_type=Input, output_type=Output),
+   path="/pdf",
+)
 
 
 if __name__ == "__main__":
